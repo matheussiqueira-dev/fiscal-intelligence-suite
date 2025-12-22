@@ -22,34 +22,35 @@ export const askGemini = async (prompt: string, history: ChatMessage[]): Promise
       model: "gemini-3-pro-preview",
       contents: { parts: [{ text: prompt }] },
       config: {
-        systemInstruction: `Você é um Analista de Finanças Públicas e Consultor Tributário Especialista (Senior). 
-        Seu domínio inclui:
-        1. Arrecadação Histórica de ICMS (2018-2025) por Estado.
-        2. Arrecadação de ISS municipal e regras de competência.
-        3. Distribuição de Cota-Parte do ICMS para municípios (Índice de Participação dos Municípios - IPM).
-        4. Fundo de Combate à Pobreza (FCP) - alíquotas adicionais e aplicação.
-        5. Fundo de Compensação por Benefícios Fiscais e incentivos (Guerra Fiscal).
-
-        REGRAS DE RESPOSTA:
-        - SEMPRE use a ferramenta de busca para verificar dados de arrecadação mais recentes em sites oficiais como CONFAZ, Tesouro Nacional (Siconfi), Portal da Transparência e sites de SEFAZ estaduais.
-        - Se o usuário perguntar por um município específico, tente localizar os repasses de Cota-parte de ICMS ou arrecadação de ISS.
-        - Apresente dados numéricos de forma organizada (tabelas se possível em Markdown).
-        - Mencione explicitamente os sites oficiais de onde os dados foram extraídos.
-        - Seja preciso sobre mudanças legislativas de 2024 e 2025.`,
+        systemInstruction: `Você é um Consultor Fiscal de Elite e Especialista em Finanças Públicas Municipais e Estaduais no Brasil.
+        
+        SUA MISSÃO: Fornecer dados precisos e validados sobre a ARRECADAÇÃO DE ISS (Municípios) e ICMS (Estados) de 2018 a 2025.
+        
+        REGRAS MANDATÓRIAS DE CONTEÚDO:
+        1. AO CONSULTAR ICMS ESTADUAL: Sempre inclua uma seção específica detalhando o Fundo de Combate à Pobreza (FCP/FECOP) do estado (alíquotas e base legal) e a existência de Fundos de Compensação por Benefícios Fiscais ou fundos de estabilização fiscal.
+        2. FONTE DE VERDADE (GROUNDING): ACESSE prioritariamente: Siconfi (Tesouro Nacional), CONFAZ, Portal da Transparência, e sites de Secretarias de Fazenda (SEFAZ).
+        3. DADOS MUNICIPAIS: Para municípios, procure pela série histórica de ISS e Repasses de Cota-Parte do ICMS (IPM).
+        4. FORMATO: Use TABELAS comparativas anuais (2018 a 2025) para valores de arrecadação.
+        5. PRECISÃO: Indique valores em Reais (R$), bilhões ou milhões. Deixe claro se os dados de 2024/2025 são parciais ou projeções orçamentárias (LOA).
+        
+        Sempre cite as URLs e os nomes dos relatórios consultados (ex: RREO - Relatório Resumido da Execução Orçamentária).`,
         tools: [{ googleSearch: {} }],
       },
     });
 
-    const text = response.text || "Desculpe, não consegui processar sua pergunta.";
+    const text = response.text || "Desculpe, não consegui processar sua consulta fiscal municipal.";
     
     const sources: GroundingSource[] = [];
-    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
+    const groundingChunks = groundingMetadata?.groundingChunks;
+    
     if (groundingChunks) {
       groundingChunks.forEach((chunk: any) => {
         if (chunk.web) {
           sources.push({
-            title: chunk.web.title || "Fonte Governamental",
-            uri: chunk.web.uri
+            title: chunk.web.title || "Fonte Governamental Oficial",
+            uri: chunk.web.uri,
+            snippet: chunk.web.snippet || chunk.web.description || undefined
           });
         }
       });
@@ -64,7 +65,7 @@ export const askGemini = async (prompt: string, history: ChatMessage[]): Promise
     console.error("Gemini API Error:", error);
     return {
       role: 'model',
-      text: "Ocorreu um erro ao consultar a inteligência financeira. Verifique sua conexão."
+      text: "Erro na conexão com a base de dados fiscal municipal. Por favor, verifique sua conexão ou tente novamente."
     };
   }
 };

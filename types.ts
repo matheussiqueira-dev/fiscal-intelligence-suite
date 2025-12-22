@@ -11,6 +11,7 @@ export interface StateData {
 export interface GroundingSource {
   title: string;
   uri: string;
+  snippet?: string;
 }
 
 export interface ChatMessage {

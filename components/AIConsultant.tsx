@@ -1,19 +1,25 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { askGemini } from '../services/geminiService';
 import { ChatMessage } from '../types';
 
 const SUGGESTIONS = [
-  "Qual a arrecadação de ICMS de SP em 2024 vs 2023?",
-  "Repasse de cota-parte ICMS para Curitiba em 2024",
-  "Alíquota FCP no Rio de Janeiro por produto",
-  "Arrecadação de ISS em Belo Horizonte desde 2018",
-  "Como funciona o fundo de compensação de benefícios?"
+  "ISS de São Paulo (Capital) 2018-2025",
+  "Arrecadação ICMS de SP (2024 vs 2023)",
+  "Repasse de cota-parte ICMS em Campinas/SP",
+  "ISS de Curitiba vs Porto Alegre em 2024",
+  "Alíquota FCP de São Paulo 2025"
 ];
 
-const AIConsultant: React.FC = () => {
+interface AIConsultantProps {}
+
+export interface AIConsultantHandle {
+  triggerSearch: (prompt: string) => void;
+}
+
+const AIConsultant = forwardRef<AIConsultantHandle, AIConsultantProps>((props, ref) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'model', text: 'Olá! Sou seu analista de finanças públicas. Posso consultar dados de arrecadação de ICMS/ISS de 2018 a 2025, repasses de cota-parte para municípios e detalhes sobre o FCP ou Fundos de Compensação. O que deseja analisar?' }
+    { role: 'model', text: 'Analista Fiscal especializado em finanças públicas brasileiras pronto. Posso consultar arrecadação histórica (2018-2025) de ICMS e ISS, cota-parte municipal e detalhes técnicos de fundos especiais. Como posso ajudar na sua pesquisa orçamentária?' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,6 +30,12 @@ const AIConsultant: React.FC = () => {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useImperativeHandle(ref, () => ({
+    triggerSearch: (prompt: string) => {
+      handleSend(prompt);
+    }
+  }));
 
   const handleSend = async (textToSend?: string) => {
     const text = textToSend || input;
@@ -44,16 +56,16 @@ const AIConsultant: React.FC = () => {
       <div className="p-4 border-b bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20">
-            <i className="fas fa-chart-line text-white"></i>
+            <i className="fas fa-search-dollar text-white"></i>
           </div>
           <div>
-            <h2 className="font-bold leading-none">Inteligência Fiscal</h2>
-            <span className="text-[10px] text-blue-200 font-medium uppercase tracking-wider">Arrecadação • Cota-Parte • FCP</span>
+            <h2 className="font-bold leading-none">Consultor de Arrecadação</h2>
+            <span className="text-[10px] text-blue-200 font-medium uppercase tracking-wider">Histórico 2018-2025 • Municipal</span>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/20 rounded-full border border-green-500/30">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-          <span className="text-[10px] font-bold text-green-300">SEARCH ACTIVE</span>
+        <div className={`flex items-center gap-1.5 px-2 py-1 bg-green-500/20 rounded-full border border-green-500/30 transition-all duration-500 ${isLoading ? 'animate-pulse scale-105 shadow-lg shadow-green-500/20' : ''}`}>
+          <i className={`fas fa-satellite-dish text-[10px] text-green-300 ${isLoading ? 'animate-spin' : ''}`} style={{ animationDuration: '3s' }}></i>
+          <span className="text-[10px] font-bold text-green-300">GROUNDING ON</span>
         </div>
       </div>
 
@@ -68,23 +80,32 @@ const AIConsultant: React.FC = () => {
               <div className="text-sm leading-relaxed whitespace-pre-wrap overflow-x-auto prose prose-sm max-w-none">
                 {msg.text}
               </div>
+              
               {msg.sources && msg.sources.length > 0 && (
-                <div className="mt-4 pt-3 border-t border-slate-100">
-                  <p className="text-[10px] font-bold uppercase text-slate-400 mb-2 flex items-center gap-1">
-                    <i className="fas fa-search"></i> Fontes Verificadas (GOV):
+                <div className="mt-6 pt-4 border-t border-slate-100">
+                  <p className="text-[10px] font-black uppercase text-slate-400 mb-3 flex items-center gap-1.5 tracking-widest">
+                    <i className="fas fa-file-alt text-blue-500"></i> Fontes e Evidências Oficiais
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="space-y-3">
                     {msg.sources.map((src, sIdx) => (
-                      <a 
-                        key={sIdx} 
-                        href={src.uri} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-[10px] bg-slate-50 text-blue-700 border border-slate-200 px-2 py-1 rounded-md hover:bg-blue-50 hover:border-blue-300 transition-all truncate max-w-[180px]"
-                        title={src.title}
-                      >
-                        {src.title}
-                      </a>
+                      <div key={sIdx} className="group">
+                        <a 
+                          href={src.uri} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-[11px] font-bold text-blue-700 hover:text-blue-900 transition-colors mb-1"
+                        >
+                          <i className="fas fa-external-link-alt text-[9px]"></i>
+                          <span className="underline decoration-blue-200 group-hover:decoration-blue-700">{src.title}</span>
+                        </a>
+                        {src.snippet && (
+                          <div className="ml-4 p-2 bg-slate-100/50 rounded-lg border-l-2 border-slate-200">
+                            <p className="text-[10px] text-slate-500 italic leading-snug">
+                              "{src.snippet.length > 200 ? src.snippet.substring(0, 197) + '...' : src.snippet}"
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -115,7 +136,7 @@ const AIConsultant: React.FC = () => {
               <button 
                 key={i}
                 onClick={() => handleSend(s)}
-                className="text-[10px] font-medium bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full hover:bg-blue-50 hover:text-blue-700 transition-all border border-slate-200 hover:border-blue-200"
+                className="text-[10px] font-medium bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full hover:bg-blue-50 hover:text-blue-700 transition-all border border-slate-200"
               >
                 {s}
               </button>
@@ -127,7 +148,7 @@ const AIConsultant: React.FC = () => {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Pergunte sobre ISS municipal, repasses ou arrecadação..."
+            placeholder="Ex: Arrecadação ISS de Salvador 2024"
             className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
           />
           <button 
@@ -141,6 +162,6 @@ const AIConsultant: React.FC = () => {
       </div>
     </div>
   );
-};
+});
 
 export default AIConsultant;

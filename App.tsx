@@ -1,8 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { BRAZIL_STATES } from './constants';
 import StateCard from './components/StateCard';
-import AIConsultant from './components/AIConsultant';
+import AIConsultant, { AIConsultantHandle } from './components/AIConsultant';
 import { StateData } from './types';
 
 const App: React.FC = () => {
@@ -10,6 +10,12 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [regionFilter, setRegionFilter] = useState('Todas');
   const [activeTab, setActiveTab] = useState<'rates' | 'analytics'>('rates');
+  
+  // Municipal search state
+  const [muniName, setMuniName] = useState('');
+  const [muniUF, setMuniUF] = useState('');
+
+  const chatRef = useRef<AIConsultantHandle>(null);
 
   const filteredStates = useMemo(() => {
     return BRAZIL_STATES.filter(state => {
@@ -24,9 +30,28 @@ const App: React.FC = () => {
     BRAZIL_STATES.find(s => s.uf === selectedUF), 
   [selectedUF]);
 
+  const handleMunicipalSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!muniName || !muniUF) return;
+    
+    const prompt = `Qual a arrecadação de ISS do município de ${muniName} - ${muniUF} de 2018 a 2025? Por favor, valide em fontes oficiais como o Siconfi e apresente em uma tabela comparativa anual. Verifique também o repasse de cota-parte de ICMS do estado para este município.`;
+    
+    if (chatRef.current) {
+      chatRef.current.triggerSearch(prompt);
+      document.getElementById('chat-consultant')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const triggerStateAnalysis = (state: StateData) => {
+    const prompt = `Analise a arrecadação de ICMS de ${state.name} (${state.uf}) de 2018 a 2025. Inclua detalhes obrigatórios sobre o Fundo de Combate à Pobreza (FCP/FECOP) e informe se existe Fundo de Compensação por Benefícios Fiscais ou fundos similares de estabilização.`;
+    if (chatRef.current) {
+      chatRef.current.triggerSearch(prompt);
+      document.getElementById('chat-consultant')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="min-h-screen pb-12 bg-slate-50">
-      {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -64,8 +89,6 @@ const App: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
-          {/* Left Column: Explorer */}
           <div className="lg:col-span-7 space-y-6">
             
             {activeTab === 'rates' ? (
@@ -117,21 +140,26 @@ const App: React.FC = () => {
               <div className="space-y-6">
                 <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl">
                   <div className="relative z-10">
-                    <span className="text-blue-400 font-bold text-xs uppercase tracking-widest mb-2 block">Insights Estratégicos</span>
-                    <h2 className="text-2xl font-bold mb-4">Análise Fiscal Transparente</h2>
+                    <span className="text-blue-400 font-bold text-xs uppercase tracking-widest mb-2 block">Painel de Arrecadação Histórica</span>
+                    <h2 className="text-2xl font-bold mb-4">Série Temporal 2018-2025</h2>
                     <p className="text-slate-400 text-sm max-w-md mb-8 leading-relaxed">
-                      Utilize nossa IA para buscar arrecadação de ISS municipal, cota-parte ICMS e fundos especiais diretamente em fontes oficiais (Siconfi/CONFAZ).
+                      Cruzamento de dados entre ICMS estadual e ISS municipal com foco em transparência e validação oficial (Siconfi/STN).
                     </p>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                        <i className="fas fa-history text-blue-400 mb-2"></i>
-                        <h4 className="font-bold text-sm">Série Histórica</h4>
-                        <p className="text-[10px] text-slate-500">Dados consolidados de 2018 até as projeções de 2025.</p>
+                        <i className="fas fa-city text-blue-400 mb-2"></i>
+                        <h4 className="font-bold text-sm">ISS Municipal</h4>
+                        <p className="text-[10px] text-slate-500">Arrecadação direta de serviços para 5.570 cidades.</p>
                       </div>
                       <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                        <i className="fas fa-city text-indigo-400 mb-2"></i>
-                        <h4 className="font-bold text-sm">Visão Municipal</h4>
-                        <p className="text-[10px] text-slate-500">Distribuição IPM e arrecadação de serviços (ISS).</p>
+                        <i className="fas fa-landmark text-indigo-400 mb-2"></i>
+                        <h4 className="font-bold text-sm">Cota-Parte</h4>
+                        <p className="text-[10px] text-slate-500">Repasses de ICMS do estado para o município.</p>
+                      </div>
+                      <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                        <i className="fas fa-shield-alt text-green-400 mb-2"></i>
+                        <h4 className="font-bold text-sm">Validado Gov</h4>
+                        <p className="text-[10px] text-slate-500">Dados extraídos de fontes oficiais Siconfi.</p>
                       </div>
                     </div>
                   </div>
@@ -139,38 +167,45 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                  <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                    <i className="fas fa-info-circle text-blue-600"></i>
-                    Indicadores de Arrecadação 2024
+                  <h3 className="text-sm font-black text-slate-900 uppercase mb-4 flex items-center gap-2">
+                    <i className="fas fa-search-location text-blue-600"></i> Consultar Arrecadação por Município
                   </h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-100">
-                          <th className="pb-3 font-bold text-slate-400 uppercase tracking-tighter">Categoria</th>
-                          <th className="pb-3 font-bold text-slate-400 uppercase tracking-tighter">Fonte Oficial</th>
-                          <th className="pb-3 font-bold text-slate-400 uppercase tracking-tighter">Status Atual</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                        <tr>
-                          <td className="py-4 font-semibold text-slate-700">ICMS Arrecadado</td>
-                          <td className="py-4 text-blue-600">CONFAZ / Boletim Arrecadação</td>
-                          <td className="py-4"><span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-bold text-[9px]">ATUALIZADO</span></td>
-                        </tr>
-                        <tr>
-                          <td className="py-4 font-semibold text-slate-700">ISS Municipal</td>
-                          <td className="py-4 text-blue-600">SICONFI / Tesouro</td>
-                          <td className="py-4"><span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold text-[9px]">DISPONÍVEL</span></td>
-                        </tr>
-                        <tr>
-                          <td className="py-4 font-semibold text-slate-700">Cota-Parte IPM</td>
-                          <td className="py-4 text-blue-600">Tribunais de Contas (TCE)</td>
-                          <td className="py-4"><span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold text-[9px]">SENSÍVEL</span></td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                  <form onSubmit={handleMunicipalSearch} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="md:col-span-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Município</label>
+                      <input 
+                        type="text" 
+                        value={muniName}
+                        onChange={(e) => setMuniName(e.target.value)}
+                        placeholder="Ex: Campinas"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none"
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Estado (UF)</label>
+                      <select 
+                        value={muniUF}
+                        onChange={(e) => setMuniUF(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none"
+                        required
+                      >
+                        <option value="">Selecione...</option>
+                        {BRAZIL_STATES.map(s => <option key={s.uf} value={s.uf}>{s.uf} - {s.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="md:col-span-1 flex items-end">
+                      <button 
+                        type="submit"
+                        className="w-full bg-blue-700 text-white py-2 rounded-lg text-xs font-bold hover:bg-blue-800 transition-all shadow-md shadow-blue-700/10 flex items-center justify-center gap-2"
+                      >
+                        <i className="fas fa-search"></i> Pesquisar Arrecadação
+                      </button>
+                    </div>
+                  </form>
+                  <p className="text-[10px] text-slate-400 mt-4 leading-relaxed italic">
+                    * A pesquisa utilizará Inteligência Artificial com Grounding em tempo real no Siconfi e Portais Municipais para gerar a série histórica 2018-2025.
+                  </p>
                 </div>
               </div>
             )}
@@ -222,12 +257,11 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="p-5 bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-100 shadow-sm">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ISS Sugerido</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Monitoramento</p>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-black text-slate-900">5.0</span>
-                      <span className="text-lg font-bold text-slate-400">%</span>
+                      <span className="text-3xl font-black text-slate-900">2025</span>
                     </div>
-                    <p className="text-[9px] text-slate-400 mt-2">Teto Municipal Geral</p>
+                    <p className="text-[9px] text-slate-400 mt-2">Série Histórica Ativa</p>
                   </div>
 
                   <div className="p-5 bg-gradient-to-br from-indigo-50/50 to-white rounded-2xl border border-indigo-100 shadow-sm">
@@ -236,32 +270,35 @@ const App: React.FC = () => {
                       <span className="text-3xl font-black text-indigo-700">25</span>
                       <span className="text-lg font-bold text-indigo-400">%</span>
                     </div>
-                    <p className="text-[9px] text-indigo-400 mt-2">Destinado a Municípios</p>
+                    <p className="text-[9px] text-indigo-400 mt-2">Média Repasse</p>
                   </div>
                 </div>
 
                 <div className="mt-8 p-6 bg-slate-900 rounded-3xl text-white">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                      <i className="fas fa-microchip text-sm"></i>
+                      <i className="fas fa-search-dollar text-sm"></i>
                     </div>
-                    <h4 className="font-bold text-sm">Próximos passos de análise</h4>
+                    <h4 className="font-bold text-sm">Consultar Arrecadação Detalhada</h4>
                   </div>
                   <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-                    Para visualizar a arrecadação específica de {selectedState.name} de 2018 a 2025 ou ver o ranking IPM de seus municípios, utilize o consultor de IA ao lado.
+                    Obtenha uma análise completa de arrecadação, incluindo o <strong>FCP</strong> e <strong>Fundos de Compensação</strong> para {selectedState.name}.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <button 
-                      onClick={() => alert('Utilize o Consultor IA para esta busca específica')}
+                      onClick={() => triggerStateAnalysis(selectedState)}
                       className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-bold transition-all border border-white/10"
                     >
-                      Ver Ranking Municípios
+                      Análise ICMS + FCP {selectedState.uf}
                     </button>
                     <button 
-                      onClick={() => alert('Utilize o Consultor IA para esta busca específica')}
+                       onClick={() => {
+                        if(chatRef.current) chatRef.current.triggerSearch(`Quais são os principais fundos de compensação e incentivos fiscais vigentes em ${selectedState.name} (${selectedState.uf})?`);
+                        document.getElementById('chat-consultant')?.scrollIntoView({ behavior: 'smooth' });
+                      }}
                       className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-bold transition-all border border-white/10"
                     >
-                      Simular Benefício Fiscal
+                      Incentivos & Compensação
                     </button>
                   </div>
                 </div>
@@ -269,72 +306,69 @@ const App: React.FC = () => {
             )}
           </div>
 
-          {/* Right Column: AI Consultant */}
-          <div className="lg:col-span-5 sticky top-24 pb-8">
-            <AIConsultant />
+          <div id="chat-consultant" className="lg:col-span-5 sticky top-24 pb-8">
+            <AIConsultant ref={chatRef} />
             
             <div className="mt-6 p-5 bg-white rounded-2xl border border-slate-200 shadow-sm">
               <h4 className="font-black text-slate-900 text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
-                <i className="fas fa-external-link-alt text-blue-600"></i> Fontes de Dados Mestre
+                <i className="fas fa-external-link-alt text-blue-600"></i> Repositórios Oficiais
               </h4>
               <div className="space-y-3">
+                <a href="https://siconfi.tesouro.gov.br/" target="_blank" className="flex items-center justify-between p-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-transparent hover:border-blue-100 transition-all group">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm border border-slate-200 group-hover:border-blue-200">
+                      <span className="text-[10px] font-black text-slate-400 group-hover:text-blue-600">STN</span>
+                    </div>
+                    <div className="text-[10px] font-bold text-slate-600 group-hover:text-blue-700 uppercase">SICONFI - Tesouro Nacional</div>
+                  </div>
+                  <i className="fas fa-chevron-right text-slate-300 group-hover:text-blue-400 text-[10px]"></i>
+                </a>
                 <a href="https://www.confaz.fazenda.gov.br/" target="_blank" className="flex items-center justify-between p-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-transparent hover:border-blue-100 transition-all group">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm border border-slate-200 group-hover:border-blue-200">
                       <span className="text-[10px] font-black text-slate-400 group-hover:text-blue-600">CZ</span>
                     </div>
-                    <div className="text-[10px] font-bold text-slate-600 group-hover:text-blue-700 uppercase">CONFAZ - Arrecadação</div>
-                  </div>
-                  <i className="fas fa-chevron-right text-slate-300 group-hover:text-blue-400 text-[10px]"></i>
-                </a>
-                <a href="https://siconfi.tesouro.gov.br/" target="_blank" className="flex items-center justify-between p-3 bg-slate-50 hover:bg-blue-50 rounded-xl border border-transparent hover:border-blue-100 transition-all group">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm border border-slate-200 group-hover:border-blue-200">
-                      <span className="text-[10px] font-black text-slate-400 group-hover:text-blue-600">SC</span>
-                    </div>
-                    <div className="text-[10px] font-bold text-slate-600 group-hover:text-blue-700 uppercase">SICONFI - Finanças Municipais</div>
+                    <div className="text-[10px] font-bold text-slate-600 group-hover:text-blue-700 uppercase">CONFAZ - Arrecadação ICMS</div>
                   </div>
                   <i className="fas fa-chevron-right text-slate-300 group-hover:text-blue-400 text-[10px]"></i>
                 </a>
               </div>
             </div>
           </div>
-
         </div>
       </main>
 
       <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20 pt-10 border-t border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10 text-center md:text-left">
           <div className="col-span-1 lg:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
               <div className="w-6 h-6 bg-blue-700 rounded flex items-center justify-center text-white">
                 <i className="fas fa-chart-pie text-[10px]"></i>
               </div>
               <span className="font-black text-slate-900 uppercase text-sm tracking-tighter">Fiscal Intelligence Pro</span>
             </div>
-            <p className="text-xs text-slate-500 leading-relaxed max-w-sm">
-              Plataforma analítica para exploração de dados tributários e financeiros do setor público brasileiro. 
-              Utilizamos Inteligência Artificial conectada em tempo real com repositórios oficiais.
+            <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto md:mx-0">
+              Monitoramento fiscal avançado 2018-2025. Dados de ISS, ICMS e Fundos Sociais validados via Inteligência Artificial.
             </p>
           </div>
           <div>
-            <h5 className="font-bold text-slate-900 text-xs uppercase mb-4">Metodologia</h5>
+            <h5 className="font-bold text-slate-900 text-xs uppercase mb-4">Escopo do Dataset</h5>
             <ul className="space-y-2 text-[10px] text-slate-500 font-medium">
-              <li>• Busca Grounding em Fontes Gov</li>
-              <li>• Validação Siconfi/Tesouro</li>
-              <li>• Comparativo Histórico 2018-2025</li>
-              <li>• Análise de Cota-Parte IPM</li>
+              <li>• ICMS Estaduais e FCP</li>
+              <li>• ISS Municipal (Siconfi)</li>
+              <li>• Fundos de Compensação</li>
+              <li>• Cota-Parte ICMS</li>
             </ul>
           </div>
           <div>
-            <h5 className="font-bold text-slate-900 text-xs uppercase mb-4">Legal</h5>
+            <h5 className="font-bold text-slate-900 text-xs uppercase mb-4">Metodologia</h5>
             <p className="text-[10px] text-slate-400 leading-relaxed">
-              Os dados apresentados são para fins de consulta rápida. Sempre valide números críticos em Diários Oficiais ou Portais de Transparência do respectivo ente federativo.
+              Grounding em tempo real conectando as APIs de busca aos repositórios de transparência fiscal do Brasil.
             </p>
           </div>
         </div>
         <div className="text-center text-[10px] text-slate-400 pb-8 uppercase tracking-widest font-bold">
-          &copy; 2025 Fiscal Intelligence Dashboard • Empowered by Gemini 3 Pro
+          &copy; 2025 Fiscal Intelligence Dashboard • Gemini 3 Pro Data Engine
         </div>
       </footer>
     </div>
