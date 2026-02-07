@@ -5,10 +5,11 @@ import QueryHistory from './components/QueryHistory';
 import ScenarioSimulator from './components/ScenarioSimulator';
 import StateCard from './components/StateCard';
 import StateComparator from './components/StateComparator';
+import WorkflowGuide from './components/WorkflowGuide';
 import { BRAZIL_STATES, REGIONS, YEAR_RANGE } from './constants';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { Region, UiSettings } from './types';
+import { Region, StateData, UiSettings } from './types';
 import { formatPercentage } from './utils/formatters';
 import {
   buildComparisonPrompt,
@@ -18,6 +19,8 @@ import {
 } from './utils/prompts';
 
 type RegionFilter = 'Todas' | Region;
+type StateViewMode = 'grid' | 'list';
+type SortMode = 'name' | 'effective-rate' | 'fcp' | 'benefit-fund';
 
 const HISTORY_LIMIT = 8;
 
@@ -27,6 +30,22 @@ const DEFAULT_UI_SETTINGS: UiSettings = {
   reducedMotion: false,
 };
 
+const sortStates = (states: StateData[], mode: SortMode): StateData[] => {
+  const ordered = [...states];
+
+  switch (mode) {
+    case 'effective-rate':
+      return ordered.sort((a, b) => b.internalRate + b.fcpRate - (a.internalRate + a.fcpRate));
+    case 'fcp':
+      return ordered.sort((a, b) => b.fcpRate - a.fcpRate || a.name.localeCompare(b.name));
+    case 'benefit-fund':
+      return ordered.sort((a, b) => Number(b.benefitFund) - Number(a.benefitFund) || a.name.localeCompare(b.name));
+    case 'name':
+    default:
+      return ordered.sort((a, b) => a.name.localeCompare(b.name));
+  }
+};
+
 const App = () => {
   const chatRef = useRef<AIConsultantHandle>(null);
 
@@ -34,6 +53,8 @@ const App = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [regionFilter, setRegionFilter] = useState<RegionFilter>('Todas');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [stateViewMode, setStateViewMode] = useState<StateViewMode>('grid');
+  const [sortMode, setSortMode] = useState<SortMode>('name');
   const [muniName, setMuniName] = useState('');
   const [muniUF, setMuniUF] = useState('');
 
@@ -53,7 +74,7 @@ const App = () => {
   const visibleStates = useMemo(() => {
     const normalizedSearch = debouncedSearch.trim().toLowerCase();
 
-    return BRAZIL_STATES.filter((state) => {
+    const filtered = BRAZIL_STATES.filter((state) => {
       const matchesSearch =
         !normalizedSearch ||
         state.name.toLowerCase().includes(normalizedSearch) ||
@@ -64,11 +85,25 @@ const App = () => {
 
       return matchesSearch && matchesRegion && matchesFavorite;
     });
-  }, [debouncedSearch, favoriteUFs, favoritesOnly, regionFilter]);
+
+    return sortStates(filtered, sortMode);
+  }, [debouncedSearch, favoriteUFs, favoritesOnly, regionFilter, sortMode]);
 
   const selectedState = useMemo(() => {
     return BRAZIL_STATES.find((state) => state.uf === selectedUF) || visibleStates[0];
   }, [selectedUF, visibleStates]);
+
+  const portfolioHighlights = useMemo(() => {
+    const highComplexityCount = visibleStates.filter((state) => state.internalRate + state.fcpRate >= 22).length;
+    const compensationCoverage = visibleStates.length
+      ? Math.round((visibleStates.filter((state) => state.benefitFund).length / visibleStates.length) * 100)
+      : 0;
+
+    return {
+      highComplexityCount,
+      compensationCoverage,
+    };
+  }, [visibleStates]);
 
   const pushHistory = (prompt: string) => {
     const normalizedPrompt = prompt.trim();
@@ -84,7 +119,7 @@ const App = () => {
     if (!chatRef.current) return;
 
     await chatRef.current.triggerSearch(prompt);
-    document.getElementById('consultant-anchor')?.scrollIntoView({
+    document.getElementById('assistant-section')?.scrollIntoView({
       behavior: 'smooth',
       block: 'start',
     });
@@ -110,6 +145,8 @@ const App = () => {
     setSearchTerm('');
     setRegionFilter('Todas');
     setFavoritesOnly(false);
+    setSortMode('name');
+    setStateViewMode('grid');
   };
 
   const toggleUiSetting = (setting: keyof UiSettings) => {
@@ -117,6 +154,13 @@ const App = () => {
       ...prev,
       [setting]: !prev[setting],
     }));
+  };
+
+  const jumpToSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
   };
 
   return (
@@ -133,6 +177,17 @@ const App = () => {
             Monitoramento de ICMS, FCP/FECOP e ISS entre {YEAR_RANGE.start} e {YEAR_RANGE.end} com
             assistente fiscal orientado por fontes oficiais.
           </p>
+          <div className="header-nav" role="navigation" aria-label="Atalhos de secao">
+            <button type="button" onClick={() => jumpToSection('explorer-section')}>
+              Explorar UFs
+            </button>
+            <button type="button" onClick={() => jumpToSection('analysis-section')}>
+              Laboratorio de Analise
+            </button>
+            <button type="button" onClick={() => jumpToSection('assistant-section')}>
+              Assistente IA
+            </button>
+          </div>
         </div>
 
         <div className="header-stats" aria-label="Resumo executivo">
@@ -153,8 +208,15 @@ const App = () => {
         </div>
       </header>
 
+      <WorkflowGuide
+        hasSelectedState={Boolean(selectedState)}
+        hasHistory={queryHistory.length > 0}
+        hasFavorites={favoriteUFs.length > 0}
+        visibleStatesCount={visibleStates.length}
+      />
+
       <main className="main-layout" id="main-content">
-        <section className="column column--wide">
+        <section className="column column--wide" id="explorer-section">
           <KpiBoard
             states={BRAZIL_STATES}
             visibleStates={visibleStates}
@@ -208,6 +270,35 @@ const App = () => {
               </label>
             </div>
 
+            <div className="controls-grid controls-grid--secondary">
+              <label>
+                Ordenacao
+                <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
+                  <option value="name">Nome da UF</option>
+                  <option value="effective-rate">Carga efetiva (ICMS + FCP)</option>
+                  <option value="fcp">Maior FCP/FECOP</option>
+                  <option value="benefit-fund">Fundo compensatorio primeiro</option>
+                </select>
+              </label>
+
+              <label>
+                Visualizacao
+                <select
+                  value={stateViewMode}
+                  onChange={(event) => setStateViewMode(event.target.value as StateViewMode)}
+                >
+                  <option value="grid">Grade</option>
+                  <option value="list">Lista detalhada</option>
+                </select>
+              </label>
+
+              <article className="insight-chip" aria-label="Pulso fiscal dos filtros atuais">
+                <span>Pulso fiscal</span>
+                <strong>{portfolioHighlights.highComplexityCount} UFs com carga efetiva alta</strong>
+                <small>{portfolioHighlights.compensationCoverage}% com fundos compensatorios</small>
+              </article>
+            </div>
+
             <div className="prefs-grid" role="group" aria-label="Preferencias de acessibilidade">
               <label className="toggle-control">
                 <input
@@ -236,7 +327,10 @@ const App = () => {
             </div>
           </section>
 
-          <section className="state-grid" aria-label="Estados e aliquotas">
+          <section
+            className={`state-grid ${stateViewMode === 'list' ? 'state-grid--list' : ''}`}
+            aria-label="Estados e aliquotas"
+          >
             {!visibleStates.length && (
               <p className="empty-state">
                 Nenhum estado encontrado com os filtros atuais. Ajuste os criterios para retomar a analise.
@@ -299,55 +393,57 @@ const App = () => {
             </section>
           )}
 
-          <StateComparator
-            primaryState={selectedState}
-            states={BRAZIL_STATES}
-            onRunComparison={(targetState) => {
-              if (!selectedState) return;
-              void triggerPrompt(buildComparisonPrompt(selectedState, targetState));
-            }}
-          />
+          <section id="analysis-section" className="analysis-stack">
+            <StateComparator
+              primaryState={selectedState}
+              states={BRAZIL_STATES}
+              onRunComparison={(targetState) => {
+                if (!selectedState) return;
+                void triggerPrompt(buildComparisonPrompt(selectedState, targetState));
+              }}
+            />
 
-          <section className="panel municipal-panel" aria-labelledby="municipal-title">
-            <header className="panel__header">
-              <div>
-                <h2 id="municipal-title">Consulta Municipal Guiada</h2>
-                <p>ISS + cota-parte de ICMS com rastreabilidade de fontes oficiais.</p>
-              </div>
-            </header>
+            <section className="panel municipal-panel" aria-labelledby="municipal-title">
+              <header className="panel__header">
+                <div>
+                  <h2 id="municipal-title">Consulta Municipal Guiada</h2>
+                  <p>ISS + cota-parte de ICMS com rastreabilidade de fontes oficiais.</p>
+                </div>
+              </header>
 
-            <form onSubmit={handleMunicipalSubmit} className="municipal-form">
-              <label>
-                Municipio
-                <input
-                  type="text"
-                  value={muniName}
-                  onChange={(event) => setMuniName(event.target.value)}
-                  placeholder="Ex: Campinas"
-                  required
-                />
-              </label>
+              <form onSubmit={handleMunicipalSubmit} className="municipal-form">
+                <label>
+                  Municipio
+                  <input
+                    type="text"
+                    value={muniName}
+                    onChange={(event) => setMuniName(event.target.value)}
+                    placeholder="Ex: Campinas"
+                    required
+                  />
+                </label>
 
-              <label>
-                UF
-                <select value={muniUF} onChange={(event) => setMuniUF(event.target.value)} required>
-                  <option value="">Selecione</option>
-                  {BRAZIL_STATES.map((state) => (
-                    <option key={state.uf} value={state.uf}>
-                      {state.uf} - {state.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <label>
+                  UF
+                  <select value={muniUF} onChange={(event) => setMuniUF(event.target.value)} required>
+                    <option value="">Selecione</option>
+                    {BRAZIL_STATES.map((state) => (
+                      <option key={state.uf} value={state.uf}>
+                        {state.uf} - {state.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              <button type="submit">Consultar municipio</button>
-            </form>
+                <button type="submit">Consultar municipio</button>
+              </form>
+            </section>
+
+            <ScenarioSimulator selectedState={selectedState} />
           </section>
-
-          <ScenarioSimulator selectedState={selectedState} />
         </section>
 
-        <aside className="column column--side" id="consultant-anchor">
+        <aside className="column column--side" id="assistant-section">
           <AIConsultant onPromptSubmitted={pushHistory} ref={chatRef} />
 
           <QueryHistory
