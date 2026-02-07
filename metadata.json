@@ -1,7 +1,5 @@
 {
-  "name": "Guia ICMS Pro - Consultor Tributário",
-  "description": "Uma ferramenta avançada para consulta de alíquotas de ICMS por estado, incluindo assistente de IA com busca em tempo real para legislação tributária brasileira.",
-  "requestFramePermissions": [
-    "geolocation"
-  ]
+  "name": "Fiscal Intelligence Suite",
+  "description": "Plataforma de inteligencia fiscal para analise de ICMS, FCP/FECOP e ISS municipal com apoio de IA e fontes oficiais.",
+  "requestFramePermissions": []
 }

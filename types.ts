@@ -1,11 +1,12 @@
+export type Region = 'Norte' | 'Nordeste' | 'Centro-Oeste' | 'Sudeste' | 'Sul';
 
 export interface StateData {
   uf: string;
   name: string;
-  internalRate: number; // Standard ICMS rate for the state
-  region: string;
-  fcpRate?: number; // Fundo de Combate à Pobreza
-  benefitFund?: boolean; // Fundo de Compensação por Benefício Fiscal
+  internalRate: number;
+  region: Region;
+  fcpRate: number;
+  benefitFund: boolean;
 }
 
 export interface GroundingSource {
@@ -15,14 +16,18 @@ export interface GroundingSource {
 }
 
 export interface ChatMessage {
+  id: string;
   role: 'user' | 'model';
   text: string;
+  createdAt: number;
+  isError?: boolean;
   sources?: GroundingSource[];
 }
 
-export interface TaxMetrics {
-  year: number;
-  icmsCollection: number;
-  issCollection: number;
-  cotaParteDistribution: number;
+export interface ScenarioResult {
+  currentEffectiveRate: number;
+  projectedEffectiveRate: number;
+  variationPercent: number;
+  projectedRevenue: number;
+  deltaRevenue: number;
 }
