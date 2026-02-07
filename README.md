@@ -1,179 +1,225 @@
-# Fiscal Intelligence Suite (Frontend)
+# Fiscal Intelligence Suite - Backend
 
-Aplicacao frontend para inteligencia fiscal, com foco em exploracao de ICMS/FCP por UF, consulta municipal (ISS + cota-parte de ICMS), simulacao de cenarios e assistente de IA com grounding em fontes oficiais.
+Backend modular para analise fiscal (ICMS, FCP/FECOP, ISS e cota-parte de ICMS) com API REST versionada, autenticacao JWT, validacao forte de dados, trilha de auditoria e integracao opcional com Gemini.
 
-## 1. Visao geral do frontend
+## 1. Visao geral do backend
 
-### Objetivo do produto
-Entregar uma interface de analise fiscal moderna e escalavel para apoiar decisao executiva com boa usabilidade, alta clareza visual e operacao rapida.
+### Dominio de negocio
+O backend atende fluxos de inteligencia fiscal para:
+- consulta de perfis tributarios por UF;
+- simulacao de cenarios de arrecadacao;
+- analises assistidas por IA (estado, municipio, comparacao e chat livre);
+- rastreio de historico de consultas para auditoria operacional.
 
 ### Publico-alvo
-- Analistas tributarios
-- Controladoria e planejamento financeiro
-- Consultorias de financas publicas
-- Gestores de arrecadacao
+- equipes de planejamento fiscal;
+- consultorias tributarias;
+- controladoria e governanca publica;
+- liderancas tecnicas que precisam de API segura e escalavel.
 
-### Fluxos principais
-1. Filtrar UFs por regiao, termo e favoritos.
-2. Explorar indicadores por estado e acionar consultas guiadas.
-3. Comparar duas UFs com diferencas de carga efetiva e fundos compensatorios.
-4. Consultar municipio com prompt estruturado (ISS + cota-parte).
-5. Rodar simulador de sensibilidade fiscal.
-6. Usar o consultor IA e reaproveitar historico de consultas.
+## 2. Arquitetura adotada
 
-## 2. Stack e tecnologias
+Arquitetura: **monolito modular** (Fastify + TypeScript), com separacao por camadas:
+- `config`: configuracao de ambiente e politicas;
+- `core`: erros de dominio, validacao, contrato de resposta;
+- `modules`: regras de negocio por contexto (`auth`, `fiscal`, `queries`);
+- `infrastructure`: persistencia (`JsonStore`);
+- `plugins`: seguranca, autenticacao e metricas.
 
-- React 19
-- TypeScript (strict mode)
-- Vite 6
-- Gemini SDK (`@google/genai`)
-- CSS customizado com design tokens
-- Persistencia local via `localStorage`
+Padroes aplicados:
+- SRP e baixo acoplamento entre servicos;
+- DRY em validacoes e auditoria;
+- contratos de resposta padronizados (`ok`/`fail`);
+- endpoint versionado (`/api/v1`).
 
-## 3. Arquitetura frontend
+## 3. Analise tecnica do backend
+
+### Situacao inicial
+O repositório nao possuia backend implementado.
+
+### Principais riscos que seriam esperados sem backend
+- exposicao de chaves sensiveis no cliente;
+- ausencia de autenticacao/autorizacao centralizada;
+- falta de trilha de auditoria e monitoramento;
+- ausencia de contratos de API e tratamento robusto de erro.
+
+### Solucao implementada
+Foi construido um backend completo em `backend/` com:
+- autenticacao JWT + RBAC;
+- validacao Zod para query/body/params;
+- plugin de seguranca (CORS, Helmet, rate limit);
+- logs estruturados e metricas operacionais;
+- trilha de consultas persistida em arquivo;
+- documentacao OpenAPI.
+
+## 4. Tecnologias utilizadas
+
+- Node.js 20+
+- TypeScript (strict)
+- Fastify
+- Zod
+- JSON Web Token (`jsonwebtoken`)
+- `bcryptjs`
+- `@fastify/helmet`, `@fastify/cors`, `@fastify/rate-limit`
+- `@fastify/swagger`, `@fastify/swagger-ui`
+- `@google/genai` (integracao opcional)
+- Vitest
+
+## 5. API e contratos
+
+Base URL local: `http://localhost:4000/api/v1`
+
+### Endpoints principais
+- `GET /health` - status da aplicacao.
+- `POST /auth/login` - login e emissao de token.
+- `GET /auth/me` - perfil do usuario autenticado.
+- `GET /states` - lista de estados com filtros.
+- `GET /states/:uf` - detalhes de uma UF.
+- `GET /insights/risk-ranking` - ranking de risco fiscal.
+- `POST /scenarios/simulate` - simulacao de arrecadacao.
+- `POST /analysis/state` - analise estadual com IA.
+- `POST /analysis/municipal` - analise municipal com IA.
+- `POST /analysis/compare` - comparacao entre UFs com IA.
+- `POST /analysis/chat` - consulta livre orientada por IA.
+- `GET /queries` - historico de consultas (usuario/admin).
+- `DELETE /queries/:id` - remocao de item do historico.
+- `GET /metrics` - metricas (somente admin).
+- `GET /docs` - Swagger UI.
+
+### Padrao de resposta
+- Sucesso: `{ success: true, data, meta? }`
+- Erro: `{ success: false, error: { code, message, details? } }`
+
+## 6. Seguranca e confiabilidade
+
+Implementacoes entregues:
+- autenticacao JWT (`Bearer`);
+- autorizacao por role (`admin`, `analyst`, `viewer`);
+- hashing de senha com `bcryptjs`;
+- validacao estrita de entrada com Zod;
+- CORS whitelist configuravel via env;
+- headers de seguranca com Helmet;
+- rate limiting global por IP;
+- tratamento global de excecoes com codigos de erro coerentes;
+- logs estruturados com redacao de dados sensiveis.
+
+Observacao: CSRF foi mitigado por arquitetura stateless baseada em token via header (sem cookie de sessao).
+
+## 7. Performance e escalabilidade
+
+Melhorias aplicadas:
+- Fastify como runtime de alta performance;
+- cache em memoria para respostas de IA repetidas;
+- persistencia com escrita serializada para evitar corrupcao de arquivo;
+- limites de payload e rate limit para reduzir abuso;
+- endpoint de metricas para observabilidade operacional.
+
+## 8. Estrutura do projeto backend
 
 ```text
-.
-|-- App.tsx
-|-- index.tsx
-|-- index.html
-|-- styles.css
-|-- constants.ts
-|-- types.ts
-|-- hooks/
-|   |-- useDebouncedValue.ts
-|   `-- useLocalStorage.ts
-|-- utils/
-|   |-- formatters.ts
-|   `-- prompts.ts
-|-- services/
-|   `-- geminiService.ts
-|-- components/
-|   |-- AIConsultant.tsx
-|   |-- KpiBoard.tsx
-|   |-- QueryHistory.tsx
-|   |-- ScenarioSimulator.tsx
-|   |-- StateCard.tsx
-|   `-- StateComparator.tsx
-|-- vite-env.d.ts
-`-- vite.config.ts
+backend/
+|-- data/
+|   `-- store.json
+|-- src/
+|   |-- app.ts
+|   |-- server.ts
+|   |-- config/
+|   |   `-- env.ts
+|   |-- core/
+|   |   |-- errors.ts
+|   |   |-- response.ts
+|   |   `-- validation.ts
+|   |-- domain/
+|   |   `-- types.ts
+|   |-- infrastructure/
+|   |   `-- store/
+|   |       `-- jsonStore.ts
+|   |-- modules/
+|   |   |-- auth/
+|   |   |   |-- auth.routes.ts
+|   |   |   |-- auth.schemas.ts
+|   |   |   |-- auth.service.ts
+|   |   |   `-- user.repository.ts
+|   |   |-- fiscal/
+|   |   |   |-- fiscal.constants.ts
+|   |   |   |-- fiscal.routes.ts
+|   |   |   |-- fiscal.schemas.ts
+|   |   |   `-- fiscal.service.ts
+|   |   `-- queries/
+|   |       |-- query.repository.ts
+|   |       |-- query.routes.ts
+|   |       `-- query.service.ts
+|   `-- plugins/
+|       |-- auth.ts
+|       |-- metrics.ts
+|       `-- security.ts
+|-- test/
+|   `-- fiscal.service.test.ts
+|-- .env.example
+|-- package.json
+`-- tsconfig.json
 ```
 
-### Padrões aplicados
-- Separacao por camada (UI, dominio, servicos, hooks, utilitarios).
-- Componentizacao de alto reaproveitamento.
-- Prompts centralizados em utilitario dedicado.
-- Estado local minimalista e previsivel.
-
-## 4. Analise tecnica e melhorias implementadas
-
-### Diagnostico do frontend (antes)
-- Acoplamento elevado no componente raiz.
-- Falta de recursos de comparacao entre UFs.
-- Ausencia de controles de acessibilidade de interface.
-- Bundle inicial impactado por import estatico da SDK de IA.
-- SEO basico no documento HTML.
-
-### Refactor e otimizacoes (depois)
-- Refatoracao estrutural com componentes especializados.
-- `geminiService` otimizado com `import()` dinamico da SDK e cache de respostas.
-- Filtro com debounce para reduzir recomputacoes.
-- Consolidacao de design system com tokens e variaveis CSS.
-- Melhorias de navegacao e fluxo (limpar filtros, comparador e reaproveitamento de consultas).
-
-### Acessibilidade e UX
-- Skip link para navegação por teclado.
-- Estados de foco visiveis em controles interativos.
-- `aria-live`, `aria-busy`, `role=status` no fluxo de chat.
-- Controles de acessibilidade com persistencia:
-  - Alto contraste
-  - Layout compacto
-  - Reducao de animacoes
-- Suporte a `prefers-reduced-motion`.
-
-### SEO frontend
-- Metadados expandidos: `description`, `keywords`, `robots`, `theme-color`.
-- Open Graph e Twitter Card.
-- JSON-LD (`SoftwareApplication`).
-
-## 5. Novas funcionalidades implementadas
-
-1. Comparador de UFs (`StateComparator`)
-- Compara ICMS, FCP/FECOP, carga efetiva e existencia de fundo compensatorio.
-- Aciona prompt de comparacao diretamente no assistente IA.
-- Valor: acelera diagnostico entre estados concorrentes.
-
-2. Preferencias de acessibilidade persistentes
-- Alto contraste, modo compacto e reducao de movimento.
-- Valor: amplia inclusao, conforto visual e controle de interface.
-
-3. Copia rapida de respostas da IA
-- Botao de copia por mensagem do assistente.
-- Valor: facilita reutilizacao em relatórios e pareceres.
-
-4. Cache de consultas IA
-- Reaproveita respostas recentes por prompt.
-- Valor: melhora responsividade percebida e reduz custo de chamadas.
-
-## 6. Setup e execucao
+## 9. Setup e execucao
 
 ### Pre-requisitos
 - Node.js 20+
 - npm 10+
 
-### Configuracao
-1. Instalar dependencias:
+### Passo a passo
+1. Entrar na pasta backend:
+```bash
+cd backend
+```
 
+2. Instalar dependencias:
 ```bash
 npm install
 ```
 
-2. Criar `.env.local` (base em `.env.example`):
+3. Criar `.env` a partir de `.env.example`.
 
-```env
-VITE_GEMINI_API_KEY=seu_token
-VITE_GEMINI_MODEL=gemini-2.0-flash
-```
-
-3. Rodar localmente:
-
+4. Rodar em desenvolvimento:
 ```bash
 npm run dev
 ```
 
-4. Validar tipos:
-
+5. Validar tipos:
 ```bash
 npm run typecheck
 ```
 
-5. Build de producao:
+6. Rodar testes:
+```bash
+npm run test
+```
 
+7. Build de producao:
 ```bash
 npm run build
 ```
 
-6. Preview da build:
-
+8. Executar build:
 ```bash
-npm run preview
+npm run start
 ```
 
-## 7. Boas praticas adotadas
+## 10. Boas praticas e padroes
 
-- TypeScript estrito para reduzir regressao.
-- Tratamento de erro e timeout no servico de IA.
-- Componentes orientados a responsabilidade unica.
-- Tokens visuais centralizados para consistencia do design.
-- Interface responsiva e sem dependencia de frameworks CSS externos.
+- Camadas desacopladas por responsabilidade.
+- Contratos de API previsiveis e versionados.
+- Falhas tratadas centralmente com codigos de erro.
+- Seguranca por padrao (headers, rate limit, validacao).
+- Preparado para evolucao para banco relacional sem quebrar casos de uso (repositorios isolados).
 
-## 8. Melhorias futuras
+## 11. Melhorias futuras
 
-- Internacionalizacao (`i18n`) e formatação regional dinâmica.
-- Testes unitarios (Vitest + Testing Library) e E2E (Playwright).
-- Instrumentacao de performance web (Core Web Vitals).
-- Worker para tarefas de processamento de prompts e caches offline.
-- Exportacao de relatórios em PDF/CSV diretamente na UI.
+- Migracao de persistencia para PostgreSQL (com migrations e indices).
+- Refresh token e rotacao de credenciais.
+- Observabilidade completa com tracing distribuido (OpenTelemetry).
+- Feature flags para experimentos de estrategias analiticas.
+- Contract tests e testes E2E de API.
+- Webhooks/event bus para integracoes externas.
 
 Autoria: Matheus Siqueira  
 Website: https://www.matheussiqueira.dev/

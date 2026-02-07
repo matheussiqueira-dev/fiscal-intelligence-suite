@@ -1,0 +1,21 @@
+{
+  "users": [
+    {
+      "id": "07d284de-49e6-4fc4-a842-b2c12d9172ad",
+      "email": "admin@fiscal.local",
+      "name": "System Admin",
+      "role": "admin",
+      "passwordHash": "$2a$10$MELJnZFvTtMSMBrtza/Pke.3.E4G5gnSOSIevu4lpqpSQRvZ1xx4q",
+      "createdAt": "2026-02-07T12:53:49.110Z"
+    },
+    {
+      "id": "ed005a42-37c3-4dbc-ace8-9133e2c921ea",
+      "email": "analyst@fiscal.local",
+      "name": "Fiscal Analyst",
+      "role": "analyst",
+      "passwordHash": "$2a$10$HsH.nHM/rn0VJsav5nay.eQGd0ykqSSj6uCQpquXlLfslzWcftca2",
+      "createdAt": "2026-02-07T12:53:49.305Z"
+    }
+  ],
+  "queryLogs": []
+}
