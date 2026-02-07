@@ -31,3 +31,9 @@ export interface ScenarioResult {
   projectedRevenue: number;
   deltaRevenue: number;
 }
+
+export interface UiSettings {
+  highContrast: boolean;
+  compactMode: boolean;
+  reducedMotion: boolean;
+}

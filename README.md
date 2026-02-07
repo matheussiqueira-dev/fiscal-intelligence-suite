@@ -1,98 +1,42 @@
-# Fiscal Intelligence Suite
+# Fiscal Intelligence Suite (Frontend)
 
-Plataforma web para analise tributaria estadual e municipal no Brasil, com foco em ICMS, FCP/FECOP, ISS e cota-parte de ICMS. O sistema combina exploracao de dados estruturados por UF com um consultor de IA apoiado por fontes oficiais.
+Aplicacao frontend para inteligencia fiscal, com foco em exploracao de ICMS/FCP por UF, consulta municipal (ISS + cota-parte de ICMS), simulacao de cenarios e assistente de IA com grounding em fontes oficiais.
 
-## Visao geral do projeto
+## 1. Visao geral do frontend
 
-O produto foi desenhado para times de financas publicas, consultorias, controladoria e planejamento estrategico que precisam:
+### Objetivo do produto
+Entregar uma interface de analise fiscal moderna e escalavel para apoiar decisao executiva com boa usabilidade, alta clareza visual e operacao rapida.
 
-- mapear rapidamente aliquotas por estado;
-- priorizar UFs com fundos de compensacao ativos;
-- conduzir consultas municipais com rastreabilidade;
-- acelerar analises com apoio de IA e grounding em fontes oficiais.
+### Publico-alvo
+- Analistas tributarios
+- Controladoria e planejamento financeiro
+- Consultorias de financas publicas
+- Gestores de arrecadacao
 
-## Fluxo principal
+### Fluxos principais
+1. Filtrar UFs por regiao, termo e favoritos.
+2. Explorar indicadores por estado e acionar consultas guiadas.
+3. Comparar duas UFs com diferencas de carga efetiva e fundos compensatorios.
+4. Consultar municipio com prompt estruturado (ISS + cota-parte).
+5. Rodar simulador de sensibilidade fiscal.
+6. Usar o consultor IA e reaproveitar historico de consultas.
 
-1. Filtrar estados por regiao, busca textual e favoritos.
-2. Selecionar uma UF para ver indicadores e acionar analises guiadas.
-3. Rodar consultas municipais (ISS + cota-parte de ICMS).
-4. Validar respostas no painel de IA com links de fontes.
-5. Reaproveitar prompts no historico de consultas.
-6. Testar sensibilidade fiscal no simulador de cenario.
+## 2. Stack e tecnologias
 
-## Tecnologias utilizadas
+- React 19
+- TypeScript (strict mode)
+- Vite 6
+- Gemini SDK (`@google/genai`)
+- CSS customizado com design tokens
+- Persistencia local via `localStorage`
 
-- React 19 + TypeScript
-- Vite
-- Gemini API (`@google/genai`)
-- CSS customizado com design system (tokens, responsividade e acessibilidade)
-
-## Funcionalidades principais
-
-- Explorer de UFs com filtros por regiao, busca e favoritos persistidos em `localStorage`.
-- Indicadores executivos (cobertura filtrada, media ICMS/FCP, fundos ativos).
-- Painel de detalhes por estado com atalhos para prompts estrategicos.
-- Consulta municipal guiada para serie historica com foco em fontes oficiais.
-- Assistente fiscal com IA:
-  - conversa contextual com historico recente;
-  - timeout e tratamento de erro;
-  - extracao e deduplicacao de fontes.
-- Historico de prompts reutilizavel e persistente.
-- Simulador de cenario fiscal (analise de sensibilidade de aliquotas).
-
-## Instalacao e uso
-
-### Pre-requisitos
-
-- Node.js 20+
-- npm 10+
-
-### Passos
-
-1. Instale dependencias:
-
-```bash
-npm install
-```
-
-2. Crie o arquivo `.env.local` com base em `.env.example`:
-
-```env
-VITE_GEMINI_API_KEY=seu_token
-VITE_GEMINI_MODEL=gemini-2.0-flash
-```
-
-3. Rode em desenvolvimento:
-
-```bash
-npm run dev
-```
-
-4. Validar tipos:
-
-```bash
-npm run typecheck
-```
-
-5. Gerar build de producao:
-
-```bash
-npm run build
-```
-
-## Scripts disponiveis
-
-- `npm run dev`: inicia ambiente local.
-- `npm run typecheck`: validacao estrita de tipos.
-- `npm run build`: build de producao.
-- `npm run preview`: preview local do build.
-
-## Estrutura do projeto
+## 3. Arquitetura frontend
 
 ```text
 .
 |-- App.tsx
 |-- index.tsx
+|-- index.html
 |-- styles.css
 |-- constants.ts
 |-- types.ts
@@ -109,44 +53,127 @@ npm run build
 |   |-- KpiBoard.tsx
 |   |-- QueryHistory.tsx
 |   |-- ScenarioSimulator.tsx
-|   `-- StateCard.tsx
+|   |-- StateCard.tsx
+|   `-- StateComparator.tsx
+|-- vite-env.d.ts
 `-- vite.config.ts
 ```
 
-## Boas praticas aplicadas
+### Padrões aplicados
+- Separacao por camada (UI, dominio, servicos, hooks, utilitarios).
+- Componentizacao de alto reaproveitamento.
+- Prompts centralizados em utilitario dedicado.
+- Estado local minimalista e previsivel.
 
-- Separacao de responsabilidades por camada (UI, dominio, hooks, servicos, utilitarios).
-- Variaveis de ambiente com prefixo `VITE_` e tipagem em `vite-env.d.ts`.
-- Tratamento robusto de falhas na IA (timeout, erro de chave, fallback de resposta).
-- Persistencia local para melhorar continuidade de uso (favoritos e historico).
-- Foco em acessibilidade:
-  - labels explicitas;
-  - foco visivel;
-  - elementos semanticos;
-  - contraste consistente.
-- CSS com tokens para manter consistencia visual e facilitar evolucao.
+## 4. Analise tecnica e melhorias implementadas
 
-## Analise tecnica e melhorias realizadas
+### Diagnostico do frontend (antes)
+- Acoplamento elevado no componente raiz.
+- Falta de recursos de comparacao entre UFs.
+- Ausencia de controles de acessibilidade de interface.
+- Bundle inicial impactado por import estatico da SDK de IA.
+- SEO basico no documento HTML.
 
-- Problemas identificados no estado inicial:
-  - UI altamente acoplada ao componente principal;
-  - dependencia de CDN para estilo/icones;
-  - configuracao de API insegura e fraca para escala;
-  - falta de persistencia para fluxos criticos;
-  - README incompleto para operacao real.
-- Melhorias executadas:
-  - refatoracao arquitetural e componentizacao;
-  - novo design system e refactor completo de UI/UX;
-  - implementacao de features de negocio (favoritos, historico, simulador, KPIs);
-  - endurecimento tecnico (typecheck estrito e servico de IA resiliente).
+### Refactor e otimizacoes (depois)
+- Refatoracao estrutural com componentes especializados.
+- `geminiService` otimizado com `import()` dinamico da SDK e cache de respostas.
+- Filtro com debounce para reduzir recomputacoes.
+- Consolidacao de design system com tokens e variaveis CSS.
+- Melhorias de navegacao e fluxo (limpar filtros, comparador e reaproveitamento de consultas).
 
-## Possiveis melhorias futuras
+### Acessibilidade e UX
+- Skip link para navegação por teclado.
+- Estados de foco visiveis em controles interativos.
+- `aria-live`, `aria-busy`, `role=status` no fluxo de chat.
+- Controles de acessibilidade com persistencia:
+  - Alto contraste
+  - Layout compacto
+  - Reducao de animacoes
+- Suporte a `prefers-reduced-motion`.
 
-- Login e workspace multiusuario com controle de acesso por perfil.
-- Camada de observabilidade (telemetria, tracing e auditoria de prompts).
-- Cache inteligente de respostas para reduzir custo de IA.
-- Testes automatizados (unitarios e E2E) com cobertura minima por modulo.
-- Integracao com ETL oficial para ingestao periodica de dados fiscais.
+### SEO frontend
+- Metadados expandidos: `description`, `keywords`, `robots`, `theme-color`.
+- Open Graph e Twitter Card.
+- JSON-LD (`SoftwareApplication`).
+
+## 5. Novas funcionalidades implementadas
+
+1. Comparador de UFs (`StateComparator`)
+- Compara ICMS, FCP/FECOP, carga efetiva e existencia de fundo compensatorio.
+- Aciona prompt de comparacao diretamente no assistente IA.
+- Valor: acelera diagnostico entre estados concorrentes.
+
+2. Preferencias de acessibilidade persistentes
+- Alto contraste, modo compacto e reducao de movimento.
+- Valor: amplia inclusao, conforto visual e controle de interface.
+
+3. Copia rapida de respostas da IA
+- Botao de copia por mensagem do assistente.
+- Valor: facilita reutilizacao em relatórios e pareceres.
+
+4. Cache de consultas IA
+- Reaproveita respostas recentes por prompt.
+- Valor: melhora responsividade percebida e reduz custo de chamadas.
+
+## 6. Setup e execucao
+
+### Pre-requisitos
+- Node.js 20+
+- npm 10+
+
+### Configuracao
+1. Instalar dependencias:
+
+```bash
+npm install
+```
+
+2. Criar `.env.local` (base em `.env.example`):
+
+```env
+VITE_GEMINI_API_KEY=seu_token
+VITE_GEMINI_MODEL=gemini-2.0-flash
+```
+
+3. Rodar localmente:
+
+```bash
+npm run dev
+```
+
+4. Validar tipos:
+
+```bash
+npm run typecheck
+```
+
+5. Build de producao:
+
+```bash
+npm run build
+```
+
+6. Preview da build:
+
+```bash
+npm run preview
+```
+
+## 7. Boas praticas adotadas
+
+- TypeScript estrito para reduzir regressao.
+- Tratamento de erro e timeout no servico de IA.
+- Componentes orientados a responsabilidade unica.
+- Tokens visuais centralizados para consistencia do design.
+- Interface responsiva e sem dependencia de frameworks CSS externos.
+
+## 8. Melhorias futuras
+
+- Internacionalizacao (`i18n`) e formatação regional dinâmica.
+- Testes unitarios (Vitest + Testing Library) e E2E (Playwright).
+- Instrumentacao de performance web (Core Web Vitals).
+- Worker para tarefas de processamento de prompts e caches offline.
+- Exportacao de relatórios em PDF/CSV diretamente na UI.
 
 Autoria: Matheus Siqueira  
 Website: https://www.matheussiqueira.dev/

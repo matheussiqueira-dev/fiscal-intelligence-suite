@@ -29,3 +29,11 @@ export const buildCompensationFundPrompt = (state: StateData): string => {
     'Priorize dados oficiais de SEFAZ, leis estaduais e CONFAZ.',
   ].join(' ');
 };
+
+export const buildComparisonPrompt = (primaryState: StateData, secondaryState: StateData): string => {
+  return [
+    `Compare ${primaryState.name} (${primaryState.uf}) e ${secondaryState.name} (${secondaryState.uf}) no periodo de ${YEAR_RANGE.start} a ${YEAR_RANGE.end}.`,
+    'Inclua diferencas em aliquota interna de ICMS, FCP/FECOP, existencia de fundos de compensacao e tendencia de arrecadacao.',
+    'Traga recomendacoes objetivas para planejamento fiscal e cite apenas fontes oficiais.',
+  ].join(' ');
+};

@@ -36,6 +36,7 @@ const AIConsultant = forwardRef<AIConsultantHandle, AIConsultantProps>(({ onProm
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -52,9 +53,13 @@ const AIConsultant = forwardRef<AIConsultantHandle, AIConsultantProps>(({ onProm
 
   const runPrompt = async (prompt: string, historySnapshot: ChatMessage[]) => {
     setIsLoading(true);
-    const response = await askGemini(prompt, historySnapshot);
-    setMessages((prev) => [...prev, response]);
-    setIsLoading(false);
+
+    try {
+      const response = await askGemini(prompt, historySnapshot);
+      setMessages((prev) => [...prev, response]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const submitPrompt = async (text: string): Promise<void> => {
@@ -68,6 +73,16 @@ const AIConsultant = forwardRef<AIConsultantHandle, AIConsultantProps>(({ onProm
     setInput('');
     onPromptSubmitted?.(prompt);
     await runPrompt(prompt, historySnapshot);
+  };
+
+  const copyMessage = async (message: ChatMessage) => {
+    try {
+      await navigator.clipboard.writeText(message.text);
+      setCopiedId(message.id);
+      window.setTimeout(() => setCopiedId(null), 1800);
+    } catch (error) {
+      console.error('Clipboard error:', error);
+    }
   };
 
   useImperativeHandle(ref, () => ({
@@ -90,7 +105,7 @@ const AIConsultant = forwardRef<AIConsultantHandle, AIConsultantProps>(({ onProm
         </button>
       </header>
 
-      <div className="chat-feed" ref={scrollRef} role="log" aria-live="polite">
+      <div className="chat-feed" ref={scrollRef} role="log" aria-live="polite" aria-busy={isLoading}>
         {messages.map((message) => (
           <article
             key={message.id}
@@ -98,7 +113,19 @@ const AIConsultant = forwardRef<AIConsultantHandle, AIConsultantProps>(({ onProm
               message.isError ? 'chat-message--error' : ''
             }`}
           >
-            <p>{message.text}</p>
+            <div className="chat-message__content">
+              <p>{message.text}</p>
+              {message.role === 'model' && (
+                <button
+                  type="button"
+                  className="copy-button"
+                  onClick={() => void copyMessage(message)}
+                  aria-label="Copiar resposta"
+                >
+                  {copiedId === message.id ? 'Copiado' : 'Copiar'}
+                </button>
+              )}
+            </div>
 
             {message.sources && message.sources.length > 0 && (
               <ul className="sources-list" aria-label="Fontes utilizadas">
@@ -116,15 +143,15 @@ const AIConsultant = forwardRef<AIConsultantHandle, AIConsultantProps>(({ onProm
         ))}
 
         {isLoading && (
-          <article className="chat-message chat-message--model">
+          <article className="chat-message chat-message--model" role="status">
             <p>Consultando bases oficiais...</p>
           </article>
         )}
       </div>
 
-      <div className="suggestions-row">
+      <div className="suggestions-row" aria-label="Sugestoes de perguntas">
         {QUERY_SUGGESTIONS.map((suggestion) => (
-          <button key={suggestion} type="button" onClick={() => submitPrompt(suggestion)} disabled={isLoading}>
+          <button key={suggestion} type="button" onClick={() => void submitPrompt(suggestion)} disabled={isLoading}>
             {suggestion}
           </button>
         ))}
@@ -159,4 +186,3 @@ const AIConsultant = forwardRef<AIConsultantHandle, AIConsultantProps>(({ onProm
 AIConsultant.displayName = 'AIConsultant';
 
 export default AIConsultant;
-

@@ -9,6 +9,7 @@ export const YEAR_RANGE = {
 
 export const QUERY_SUGGESTIONS: string[] = [
   'Comparar arrecadacao de ICMS de SP e MG em 2023 e 2024',
+  'Quais UFs tem maior carga efetiva de ICMS + FCP em 2025?',
   'Mapa de fundos de compensacao ativos no Sul em 2025',
   'Serie ISS de Recife com validacao Siconfi',
   'Riscos fiscais para estados com FCP acima de 2%',

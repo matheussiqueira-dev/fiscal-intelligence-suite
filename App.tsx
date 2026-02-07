@@ -1,15 +1,17 @@
-import { useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import AIConsultant, { AIConsultantHandle } from './components/AIConsultant';
 import KpiBoard from './components/KpiBoard';
 import QueryHistory from './components/QueryHistory';
 import ScenarioSimulator from './components/ScenarioSimulator';
 import StateCard from './components/StateCard';
+import StateComparator from './components/StateComparator';
 import { BRAZIL_STATES, REGIONS, YEAR_RANGE } from './constants';
 import { useDebouncedValue } from './hooks/useDebouncedValue';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { Region } from './types';
+import { Region, UiSettings } from './types';
 import { formatPercentage } from './utils/formatters';
 import {
+  buildComparisonPrompt,
   buildCompensationFundPrompt,
   buildMunicipalityPrompt,
   buildStatePrompt,
@@ -18,6 +20,12 @@ import {
 type RegionFilter = 'Todas' | Region;
 
 const HISTORY_LIMIT = 8;
+
+const DEFAULT_UI_SETTINGS: UiSettings = {
+  highContrast: false,
+  compactMode: false,
+  reducedMotion: false,
+};
 
 const App = () => {
   const chatRef = useRef<AIConsultantHandle>(null);
@@ -31,8 +39,16 @@ const App = () => {
 
   const [favoriteUFs, setFavoriteUFs] = useLocalStorage<string[]>('fis.favorite-ufs', []);
   const [queryHistory, setQueryHistory] = useLocalStorage<string[]>('fis.query-history', []);
+  const [uiSettings, setUiSettings] = useLocalStorage<UiSettings>('fis.ui-settings', DEFAULT_UI_SETTINGS);
 
   const debouncedSearch = useDebouncedValue(searchTerm, 180);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('theme-high-contrast', uiSettings.highContrast);
+    root.classList.toggle('theme-compact', uiSettings.compactMode);
+    root.classList.toggle('theme-reduced-motion', uiSettings.reducedMotion);
+  }, [uiSettings.compactMode, uiSettings.highContrast, uiSettings.reducedMotion]);
 
   const visibleStates = useMemo(() => {
     const normalizedSearch = debouncedSearch.trim().toLowerCase();
@@ -74,7 +90,7 @@ const App = () => {
     });
   };
 
-  const handleMunicipalSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleMunicipalSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!muniName.trim() || !muniUF.trim()) return;
 
@@ -90,8 +106,25 @@ const App = () => {
     });
   };
 
+  const clearFilters = () => {
+    setSearchTerm('');
+    setRegionFilter('Todas');
+    setFavoritesOnly(false);
+  };
+
+  const toggleUiSetting = (setting: keyof UiSettings) => {
+    setUiSettings((prev) => ({
+      ...prev,
+      [setting]: !prev[setting],
+    }));
+  };
+
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Pular para o conteudo principal
+      </a>
+
       <header className="site-header">
         <div>
           <p className="eyebrow">Fiscal Intelligence Suite</p>
@@ -120,7 +153,7 @@ const App = () => {
         </div>
       </header>
 
-      <main className="main-layout">
+      <main className="main-layout" id="main-content">
         <section className="column column--wide">
           <KpiBoard
             states={BRAZIL_STATES}
@@ -129,6 +162,16 @@ const App = () => {
           />
 
           <section className="panel controls-panel" aria-label="Filtros de exploracao">
+            <div className="panel__header">
+              <div>
+                <h2>Filtros e Preferencias</h2>
+                <p>{visibleStates.length} UFs encontradas com os filtros atuais.</p>
+              </div>
+              <button type="button" onClick={clearFilters}>
+                Limpar filtros
+              </button>
+            </div>
+
             <div className="controls-grid">
               <label>
                 Buscar UF ou estado
@@ -162,6 +205,33 @@ const App = () => {
                   onChange={(event) => setFavoritesOnly(event.target.checked)}
                 />
                 Mostrar apenas favoritos
+              </label>
+            </div>
+
+            <div className="prefs-grid" role="group" aria-label="Preferencias de acessibilidade">
+              <label className="toggle-control">
+                <input
+                  type="checkbox"
+                  checked={uiSettings.highContrast}
+                  onChange={() => toggleUiSetting('highContrast')}
+                />
+                Alto contraste
+              </label>
+              <label className="toggle-control">
+                <input
+                  type="checkbox"
+                  checked={uiSettings.compactMode}
+                  onChange={() => toggleUiSetting('compactMode')}
+                />
+                Layout compacto
+              </label>
+              <label className="toggle-control">
+                <input
+                  type="checkbox"
+                  checked={uiSettings.reducedMotion}
+                  onChange={() => toggleUiSetting('reducedMotion')}
+                />
+                Reduzir animacoes
               </label>
             </div>
           </section>
@@ -228,6 +298,15 @@ const App = () => {
               </div>
             </section>
           )}
+
+          <StateComparator
+            primaryState={selectedState}
+            states={BRAZIL_STATES}
+            onRunComparison={(targetState) => {
+              if (!selectedState) return;
+              void triggerPrompt(buildComparisonPrompt(selectedState, targetState));
+            }}
+          />
 
           <section className="panel municipal-panel" aria-labelledby="municipal-title">
             <header className="panel__header">
@@ -303,7 +382,10 @@ const App = () => {
       </main>
 
       <footer className="site-footer">
-        <p>Fiscal Intelligence Suite - Plataforma de analise fiscal com foco em manutencao, escala e rastreabilidade.</p>
+        <p>
+          Fiscal Intelligence Suite - Plataforma de analise fiscal com foco em manutencao, escala,
+          acessibilidade e rastreabilidade.
+        </p>
       </footer>
     </div>
   );

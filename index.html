@@ -3,9 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#116b5a" />
+    <meta name="robots" content="index,follow" />
+    <meta
+      name="keywords"
+      content="ICMS, ISS, FCP, FECOP, inteligencia fiscal, arrecadacao publica, planejamento tributario"
+    />
     <meta
       name="description"
       content="Suite para analise de arrecadacao tributaria com foco em ICMS, FCP/FECOP e ISS municipal."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Fiscal Intelligence Suite" />
+    <meta
+      property="og:description"
+      content="Painel frontend moderno para exploracao de ICMS, FCP/FECOP e ISS com assistente fiscal orientado por fontes oficiais."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Fiscal Intelligence Suite" />
+    <meta
+      name="twitter:description"
+      content="Analise tributaria estadual e municipal com UX otimizada, acessibilidade e IA."
     />
     <title>Fiscal Intelligence Suite</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -18,5 +37,16 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Fiscal Intelligence Suite",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web",
+        "description": "Aplicacao frontend para monitoramento de ICMS, FCP/FECOP e ISS com foco em usabilidade e analise fiscal.",
+        "inLanguage": "pt-BR"
+      }
+    </script>
   </body>
 </html>
